@@ -20,7 +20,7 @@ The solution focuses on DevOps practices including automation, containerization,
 - Configure servers using Ansible
 
 
-## 🛠️ Tools & Technologies
+## Tools & Technologies
 - Docker
 - Kubernetes
 - Jenkins
