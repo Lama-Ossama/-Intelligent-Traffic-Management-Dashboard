@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Traffic Management Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <div>
+          <div class="logo-title">ITMD</div>
+          <div class="logo-sub">Intelligent Traffic Management Dashboard</div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span class="live-badge">
+          <span class="live-dot"></span>
+          LIVE DATA
+        </span>
+        <span class="record-count"><%= stats.totalRecords %> records loaded</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ── Summary Cards ──────────────────────────────────── -->
+    <section class="section">
+      <h2 class="section-title">Overview</h2>
+      <div class="cards-grid">
+
+        <div class="card card--accent">
+          <div class="card-label">Total Records</div>
+          <div class="card-value"><%= stats.totalRecords.toLocaleString() %></div>
+          <div class="card-desc">Data points in dataset</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Total Vehicles</div>
+          <div class="card-value"><%= stats.totalVehicles.toLocaleString() %></div>
+          <div class="card-desc">Across all recorded intervals</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Avg Vehicles / Interval</div>
+          <div class="card-value"><%= stats.avgVehicles.toLocaleString() %></div>
+          <div class="card-desc">Per 15-minute window</div>
+        </div>
+
+        <div class="card card--peak">
+          <div class="card-label">Peak Traffic</div>
+          <% if (stats.peakRecord) { %>
+            <div class="card-value"><%= stats.peakRecord.total %></div>
+            <div class="card-desc">
+              <%= stats.peakRecord.time %> · <%= stats.peakRecord.dayOfWeek %>
+            </div>
+          <% } else { %>
+            <div class="card-value">—</div>
+          <% } %>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Traffic Situation Breakdown ───────────────────── -->
+    <section class="section">
+      <h2 class="section-title">Traffic Situation Breakdown</h2>
+      <div class="situation-grid">
+
+        <div class="sit-card sit--low">
+          <div class="sit-icon">▼</div>
+          <div class="sit-count"><%= stats.situationCounts.low %></div>
+          <div class="sit-label">LOW</div>
+          <div class="sit-bar">
+            <div class="sit-bar-fill" style="width: <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.low / stats.totalRecords * 100) : 0 %>%"></div>
+          </div>
+          <div class="sit-pct">
+            <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.low / stats.totalRecords * 100) : 0 %>%
+          </div>
+        </div>
+
+        <div class="sit-card sit--normal">
+          <div class="sit-icon">■</div>
+          <div class="sit-count"><%= stats.situationCounts.normal %></div>
+          <div class="sit-label">NORMAL</div>
+          <div class="sit-bar">
+            <div class="sit-bar-fill" style="width: <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.normal / stats.totalRecords * 100) : 0 %>%"></div>
+          </div>
+          <div class="sit-pct">
+            <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.normal / stats.totalRecords * 100) : 0 %>%
+          </div>
+        </div>
+
+        <div class="sit-card sit--high">
+          <div class="sit-icon">▲</div>
+          <div class="sit-count"><%= stats.situationCounts.high %></div>
+          <div class="sit-label">HIGH</div>
+          <div class="sit-bar">
+            <div class="sit-bar-fill" style="width: <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.high / stats.totalRecords * 100) : 0 %>%"></div>
+          </div>
+          <div class="sit-pct">
+            <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.high / stats.totalRecords * 100) : 0 %>%
+          </div>
+        </div>
+
+        <div class="sit-card sit--heavy">
+          <div class="sit-icon">⚠</div>
+          <div class="sit-count"><%= stats.situationCounts.heavy %></div>
+          <div class="sit-label">HEAVY</div>
+          <div class="sit-bar">
+            <div class="sit-bar-fill" style="width: <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.heavy / stats.totalRecords * 100) : 0 %>%"></div>
+          </div>
+          <div class="sit-pct">
+            <%= stats.totalRecords > 0 ? Math.round(stats.situationCounts.heavy / stats.totalRecords * 100) : 0 %>%
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Recent Records Table ───────────────────────────── -->
+    <section class="section">
+      <h2 class="section-title">Recent Traffic Records <span class="section-note">(last 50)</span></h2>
+      <div class="table-wrapper">
+        <table class="traffic-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Cars</th>
+              <th>Bikes</th>
+              <th>Buses</th>
+              <th>Trucks</th>
+              <th>Total</th>
+              <th>Situation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recentRecords.forEach(function(r) { %>
+            <tr>
+              <td class="mono"><%= r.time %></td>
+              <td class="mono"><%= r.date %></td>
+              <td><%= r.dayOfWeek %></td>
+              <td><%= r.carCount %></td>
+              <td><%= r.bikeCount %></td>
+              <td><%= r.busCount %></td>
+              <td><%= r.truckCount %></td>
+              <td class="total-cell"><strong><%= r.total %></strong></td>
+              <td>
+                <span class="badge badge--<%= r.trafficSituation %>">
+                  <%= r.trafficSituation.toUpperCase() %>
+                </span>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>Intelligent Traffic Management Dashboard</span>
+    <span class="footer-sep">·</span>
+    <span>Presentation Layer — DevOps Project</span>
+    <span class="footer-sep">·</span>
+    <span>Node.js + Express + Docker</span>
+  </footer>
+
+</body>
+</html>
