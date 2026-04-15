@@ -123,15 +123,30 @@ jobs:
         run: docker compose build
         working-directory: ${{ github.workspace }}
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner on traffic-dashboard
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'image'
-          image-ref: 'traffic-dashboard'
+          image-ref: 'traffic-dashboard:latest'
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'trivy-dashboard.sarif'
+          severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy results to GitHub Security
+      - name: Run Trivy vulnerability scanner on traffic-collector
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'traffic-collector:latest'
+          format: 'sarif'
+          output: 'trivy-collector.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy dashboard results
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: 'trivy-dashboard.sarif'
+          category: 'trivy-dashboard'
+
+      - name: Upload Trivy collector results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-collector.sarif'
+          category: 'trivy-collector'
