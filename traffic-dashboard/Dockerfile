@@ -22,6 +22,10 @@ RUN npm install --omit=dev
 # Copy everything else (server.js, views, public, data)
 COPY . .
 
+# Ensure data directory exists
+RUN mkdir -p /app/data && \
+    if [ -f /app/traffic-dashboard/data/Traffic.csv ]; then cp /app/traffic-dashboard/data/Traffic.csv /app/data/; fi
+
 # Stage 4: Expose port & run
 # Tell Docker the app listens on port 3002
 EXPOSE 3002

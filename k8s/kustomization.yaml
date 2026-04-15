@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: traffic-system
+
+resources:
+  - 01-namespace.yaml
+  - 02-secrets-configmap.yaml
+  - 03-traffic-collector.yaml
+  - 04-traffic-dashboard.yaml
+
+# Common labels
+commonLabels:
+  app.kubernetes.io/name: intelligent-traffic-management
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/part-of: traffic-system
+
+# Common annotations
+commonAnnotations:
+  description: "Intelligent Traffic Management Dashboard with CI/CD"
+  managed-by: "kustomize"
+
+# Image patches (اختياري - لـ تحديث الـ version)
+# images:
+# - name: mohamedosama2004/traffic-collector
+#   newTag: "v1.0.0"
+# - name: mohamedosama2004/traffic-dashboard
+#   newTag: "v1.0.0"

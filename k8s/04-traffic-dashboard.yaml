@@ -1,0 +1,169 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-dashboard
+  namespace: traffic-system
+  labels:
+    app: traffic-dashboard
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: traffic-dashboard
+  template:
+    metadata:
+      labels:
+        app: traffic-dashboard
+        version: v1
+    spec:
+      # Restart policy: always restart if pod crashes
+      restartPolicy: Always
+      
+      containers:
+      - name: traffic-dashboard
+        image: mohamedosama2004/traffic-dashboard:latest
+        imagePullPolicy: Always
+        
+        # Ports
+        ports:
+        - containerPort: 3002
+          name: http
+          protocol: TCP
+        
+        # Environment variables
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: traffic-config
+              key: NODE_ENV
+        - name: PORT
+          value: "3002"
+        
+        # Resource requests and limits
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        
+        # Working directory and data volume
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+        
+        # Liveness probe: check if pod is alive
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3002
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe: check if pod is ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3002
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Startup probe: give app time to start
+        startupProbe:
+          httpGet:
+            path: /
+            port: 3002
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+      
+      # Volumes
+      volumes:
+      - name: data
+        configMap:
+          name: traffic-data
+          items:
+          - key: Traffic.csv
+            path: Traffic.csv
+      - name: logs
+        emptyDir: {}
+      
+      # Pod restart policy
+      terminationGracePeriodSeconds: 30
+      
+      # Affinity rules (spread pods across nodes)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - traffic-dashboard
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-dashboard
+  namespace: traffic-system
+  labels:
+    app: traffic-dashboard
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 3002
+    targetPort: 3002
+    protocol: TCP
+    name: http
+  selector:
+    app: traffic-dashboard
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: traffic-dashboard-hpa
+  namespace: traffic-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: traffic-dashboard
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
