@@ -129,7 +129,7 @@
 
     <!-- ── Recent Records Table ───────────────────────────── -->
     <section class="section">
-      <h2 class="section-title">Recent Traffic Records <span class="section-note">(last 50)</span></h2>
+      <h2 class="section-title">Recent Traffic Records <span class="section-note">(100 per page)</span></h2>
       <div class="table-wrapper">
         <table class="traffic-table">
           <thead>
@@ -166,6 +166,37 @@
           </tbody>
         </table>
       </div>
+      
+      <!-- ── Pagination Controls ──────────────────────────── -->
+      <div class="pagination">
+        <div class="pagination-info">
+          Page <strong><%= currentPage %></strong> of <strong><%= totalPages %></strong> 
+          (<strong><%= totalRecords %></strong> total records)
+        </div>
+        
+        <div class="pagination-controls">
+          <% if (currentPage > 1) { %>
+            <a href="/?page=1" class="pagination-btn">« First</a>
+            <a href="/?page=<%= currentPage - 1 %>" class="pagination-btn">‹ Previous</a>
+          <% } else { %>
+            <span class="pagination-btn disabled">« First</span>
+            <span class="pagination-btn disabled">‹ Previous</span>
+          <% } %>
+          
+          <span class="pagination-page-input">
+            Page: 
+            <input type="number" id="pageInput" min="1" max="<%= totalPages %>" value="<%= currentPage %>" />
+          </span>
+          
+          <% if (currentPage < totalPages) { %>
+            <a href="/?page=<%= currentPage + 1 %>" class="pagination-btn">Next ›</a>
+            <a href="/?page=<%= totalPages %>" class="pagination-btn">Last »</a>
+          <% } else { %>
+            <span class="pagination-btn disabled">Next ›</span>
+            <span class="pagination-btn disabled">Last »</span>
+          <% } %>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -177,6 +208,18 @@
     <span class="footer-sep">·</span>
     <span>Node.js + Express + Docker</span>
   </footer>
+
+  <script>
+    // Handle page input
+    document.getElementById('pageInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        const pageNum = parseInt(this.value);
+        if (pageNum && pageNum > 0) {
+          window.location.href = '/?page=' + pageNum;
+        }
+      }
+    });
+  </script>
 
 </body>
 </html>

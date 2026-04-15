@@ -1,16 +1,23 @@
-# 1. download the base image (python 3.9 slim)
+# ============================================================
+#  Dockerfile — Traffic Data Collector (Data Ingestion)
+#  Using Python 3.9 Slim
+# ============================================================
+
+# Stage 1: Base image
 FROM python:3.9-slim
 
-# 2. set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
+# Install required Python packages
+RUN pip install --no-cache-dir pandas
 
-# 3. install the required Python packages (pandas)
-RUN pip install pandas
-
-# 4. copy the code and CSV file from your machine to the container
+# Copy application code and data
 COPY app.py .
 COPY Traffic.csv .
 
-# 5. the command to run the application when the container starts
+# Set Python output to be unbuffered
+ENV PYTHONUNBUFFERED=1
+
+# Run the collector
 CMD ["python", "app.py"]

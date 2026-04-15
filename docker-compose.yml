@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # ── Traffic Data Collector (Python) ──────────────────────
+  traffic-collector:
+    build:
+      context: ./traffic-collector
+      dockerfile: dockerfile
+    container_name: traffic-collector
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./traffic-collector/Traffic.csv:/app/Traffic.csv
+    networks:
+      - traffic-network
+    restart: unless-stopped
+
+  # ── Traffic Dashboard (Node.js + Express) ───────────────
+  traffic-dashboard:
+    build:
+      context: ./traffic-dashboard
+      dockerfile: Dockerfile
+    container_name: traffic-dashboard
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+    volumes:
+      - ./traffic-dashboard/data:/app/data
+    networks:
+      - traffic-network
+    depends_on:
+      - traffic-collector
+    restart: unless-stopped
+
+networks:
+  traffic-network:
+    driver: bridge

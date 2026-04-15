@@ -92,7 +92,7 @@ function computeStats(data) {
   };
 }
 
-// ── Route: GET /  →  render the HTML dashboard ────────────
+// ── Route: GET /  →  render the HTML dashboard with pagination ────────────
 app.get('/', (req, res) => {
   readTrafficCSV((err, data) => {
     if (err) {
@@ -104,11 +104,30 @@ app.get('/', (req, res) => {
       `);
     }
 
-    const stats   = computeStats(data);
-    // Show the 50 most-recent records in the table (last rows of CSV)
-    const recentRecords = data.slice(-50).reverse();
+    // Get page number from query parameter (default: 1)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = 100;
+    
+    // Reverse data to show newest first
+    const reversedData = data.slice().reverse();
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(reversedData.length / pageSize);
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    const pageRecords = reversedData.slice(startIdx, endIdx);
+    
+    // Compute stats on all data (not just current page)
+    const stats = computeStats(data);
 
-    res.render('index', { stats, recentRecords });
+    res.render('index', { 
+      stats, 
+      recentRecords: pageRecords,
+      currentPage: page,
+      totalPages: totalPages,
+      pageSize: pageSize,
+      totalRecords: reversedData.length
+    });
   });
 });
 
