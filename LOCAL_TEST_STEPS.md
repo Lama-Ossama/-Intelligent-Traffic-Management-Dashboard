@@ -315,4 +315,4 @@ docker-compose logs traffic-dashboard
 2. ابدأ تعمل kubernetes manifests
 3. اختبر على k8s cluster
 
-**سؤال:** تحتاج مساعدة في أي خطوة من الخطوات دي؟
+
