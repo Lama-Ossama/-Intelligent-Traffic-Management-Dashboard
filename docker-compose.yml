@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ── Traffic Data Collector (Python) ──────────────────────
   traffic-collector:
@@ -32,6 +30,23 @@ services:
       - traffic-network
     depends_on:
       - traffic-collector
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  # Scrapes /metrics from the dashboard service and exposes the Prometheus UI.
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: traffic-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - traffic-network
+    depends_on:
+      - traffic-dashboard
     restart: unless-stopped
 
 networks:

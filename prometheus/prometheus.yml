@@ -1,0 +1,19 @@
+# Prometheus configuration for the local DevOps monitoring demo.
+# It scrapes the Node.js dashboard metrics endpoint inside the Docker network.
+
+global:
+  # Short interval so metric changes are visible quickly during presentation.
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "traffic-dashboard"
+    # Docker Compose service discovery uses the service name as the hostname.
+    static_configs:
+      - targets: ["traffic-dashboard:3002"]
+    metrics_path: /metrics
+
+  - job_name: "prometheus"
+    # Prometheus also monitors itself so students can show the server status.
+    static_configs:
+      - targets: ["localhost:9090"]

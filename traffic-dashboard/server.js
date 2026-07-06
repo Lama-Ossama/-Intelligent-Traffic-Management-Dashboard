@@ -8,9 +8,54 @@ const express = require('express');
 const fs      = require('fs');
 const path    = require('path');
 const csv     = require('csv-parser');
+const client  = require('prom-client');
 
 const app  = express();
 const PORT = 3002;
+
+// Prometheus metrics registry.
+// These metrics make the dashboard observable during the DevOps demo.
+const register = new client.Registry();
+client.collectDefaultMetrics({
+  register,
+  prefix: 'traffic_dashboard_',
+});
+
+const trafficRecordsGauge = new client.Gauge({
+  name: 'traffic_dashboard_records_total',
+  help: 'Number of traffic records loaded from the CSV file.',
+});
+
+const trafficVehiclesGauge = new client.Gauge({
+  name: 'traffic_dashboard_vehicles_total',
+  help: 'Total number of vehicles across all loaded traffic records.',
+});
+
+const trafficAverageVehiclesGauge = new client.Gauge({
+  name: 'traffic_dashboard_average_vehicles',
+  help: 'Average number of vehicles per traffic record.',
+});
+
+const trafficSituationGauge = new client.Gauge({
+  name: 'traffic_dashboard_situation_records',
+  help: 'Number of records grouped by traffic situation.',
+  labelNames: ['situation'],
+});
+
+register.registerMetric(trafficRecordsGauge);
+register.registerMetric(trafficVehiclesGauge);
+register.registerMetric(trafficAverageVehiclesGauge);
+register.registerMetric(trafficSituationGauge);
+
+function updateTrafficMetrics(stats) {
+  trafficRecordsGauge.set(stats.totalRecords);
+  trafficVehiclesGauge.set(stats.totalVehicles);
+  trafficAverageVehiclesGauge.set(stats.avgVehicles);
+
+  Object.entries(stats.situationCounts).forEach(([situation, count]) => {
+    trafficSituationGauge.labels(situation).set(count);
+  });
+}
 
 // ── View engine & static files ────────────────────────────
 app.set('view engine', 'ejs');
@@ -136,6 +181,30 @@ app.get('/api/traffic', (req, res) => {
   readTrafficCSV((err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ count: data.length, data });
+  });
+});
+
+// Route: GET /health
+// Prometheus can use this indirectly to confirm the service is reachable.
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'traffic-dashboard' });
+});
+
+// Route: GET /metrics
+// Prometheus scrapes this endpoint every few seconds.
+app.get('/metrics', async (req, res) => {
+  readTrafficCSV((err, data) => {
+    if (err) {
+      console.error('Error updating Prometheus metrics:', err.message);
+      return res.status(500).send(`# metrics unavailable: ${err.message}\n`);
+    }
+
+    updateTrafficMetrics(computeStats(data));
+
+    res.set('Content-Type', register.contentType);
+    register.metrics()
+      .then((metrics) => res.send(metrics))
+      .catch((metricsError) => res.status(500).send(metricsError.message));
   });
 });
 
