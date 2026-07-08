@@ -1,4 +1,7 @@
 # Intelligent Traffic Management Dashboard
+## Architecture
+
+![Architecture diagram](docs/architecture/architecture.png)
 **Drive Link:** https://drive.google.com/drive/folders/1-Q9L_qYiQUs13soYEqLijQGZFUDaiGQo?usp=sharing
 
 **Team Members:**
