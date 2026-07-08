@@ -6,8 +6,6 @@ services:
       dockerfile: dockerfile
     environment:
       - PYTHONUNBUFFERED=1
-    volumes:
-      - ./traffic-collector/Traffic.csv:/app/Traffic.csv
     networks:
       - traffic-network
     restart: unless-stopped
@@ -22,8 +20,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
-    volumes:
-      - ./traffic-dashboard/data:/app/data
     networks:
       - traffic-network
     depends_on:
