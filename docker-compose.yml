@@ -4,7 +4,6 @@ services:
     build:
       context: ./traffic-collector
       dockerfile: dockerfile
-    container_name: traffic-collector
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
@@ -18,7 +17,6 @@ services:
     build:
       context: ./traffic-dashboard
       dockerfile: Dockerfile
-    container_name: traffic-dashboard
     ports:
       - "3002:3002"
     environment:

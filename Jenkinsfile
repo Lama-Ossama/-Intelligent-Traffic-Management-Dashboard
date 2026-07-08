@@ -19,6 +19,11 @@ pipeline {
         COLLECTOR_IMAGE = "${DOCKERHUB_CREDENTIALS_USR}/traffic-collector"
         DASHBOARD_IMAGE = "${DOCKERHUB_CREDENTIALS_USR}/traffic-dashboard"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        // Isolates each Jenkins run's containers/network/volumes from
+        // local dev and from other concurrent Jenkins builds — avoids
+        // "container name already in use" / "port already allocated".
+        COMPOSE_PROJECT_NAME = "traffic-ci-${env.BUILD_NUMBER}"
+        COMPOSE_FILES = "-f docker-compose.yml -f docker-compose.ci.yml"
     }
 
     stages {
@@ -42,10 +47,14 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh '''
-                    docker compose build traffic-collector traffic-dashboard
-                    docker compose up -d traffic-collector traffic-dashboard
+                    # Pre-clean: guards against a stale stack left behind by a
+                    # crashed or replayed build under the same BUILD_NUMBER.
+                    docker compose $COMPOSE_FILES down -v --remove-orphans || true
+
+                    docker compose $COMPOSE_FILES build traffic-collector traffic-dashboard
+                    docker compose $COMPOSE_FILES up -d traffic-collector traffic-dashboard
                     sleep 10
-                    CID=$(docker compose ps -q traffic-dashboard)
+                    CID=$(docker compose $COMPOSE_FILES ps -q traffic-dashboard)
                     docker exec "$CID" wget -q -O- http://localhost:3002/ > /dev/null
                     docker exec "$CID" wget -q -O- http://localhost:3002/api/traffic > /dev/null
                     echo "Integration checks passed"
@@ -53,7 +62,7 @@ pipeline {
             }
             post {
                 always {
-                    sh 'docker compose down || true'
+                    sh 'docker compose $COMPOSE_FILES down -v --remove-orphans || true'
                 }
             }
         }
