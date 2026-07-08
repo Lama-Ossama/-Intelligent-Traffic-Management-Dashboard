@@ -49,6 +49,31 @@ services:
       - traffic-dashboard
     restart: unless-stopped
 
+  # ── Jenkins (self-hosted CI/CD, alongside GitHub Actions) ──
+  # Custom image bundles Docker CLI + Node.js + Python so the
+  # Jenkinsfile stages can install deps, test, and build/push
+  # images. The Docker socket is mounted so Jenkins controls the
+  # HOST's Docker daemon (Docker-outside-of-Docker) instead of
+  # running a nested daemon.
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: traffic-jenkins
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traffic-network
+    restart: unless-stopped
+
 networks:
   traffic-network:
     driver: bridge
+
+volumes:
+  jenkins_home:
