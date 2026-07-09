@@ -28,31 +28,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker images
-        run: |
-          docker compose $COMPOSE_FILES build traffic-collector traffic-dashboard
-        working-directory: ${{ github.workspace }}
-
-      - name: Run containers for testing
-        run: |
-          docker compose $COMPOSE_FILES up -d traffic-collector traffic-dashboard
-          sleep 10
-        working-directory: ${{ github.workspace }}
-
-      - name: Test Traffic Dashboard API
-        run: |
-          echo "Testing Dashboard health check..."
-          CID=$(docker compose $COMPOSE_FILES ps -q traffic-dashboard)
-          docker exec "$CID" wget -q -O- http://localhost:3002/ > /dev/null || exit 1
-          echo "✓ Dashboard is responding"
-
-          docker exec "$CID" wget -q -O- http://localhost:3002/api/traffic > /dev/null || exit 1
-          echo "✓ API endpoint is working"
-        working-directory: ${{ github.workspace }}
-
-      - name: Stop containers
-        if: always()
-        run: docker compose $COMPOSE_FILES down -v --remove-orphans
+      - name: Run integration tests
+        # scripts/ci-test.sh is the single source of truth for the
+        # integration checks — the Jenkinsfile calls the same script
+        # so both pipelines run identical checks.
+        run: bash scripts/ci-test.sh
         working-directory: ${{ github.workspace }}
 
   # ── Job 2: Build & Push to Docker Hub ────────────────────

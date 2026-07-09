@@ -46,22 +46,16 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh '''
-                    # Pre-clean: guards against a stale stack left behind by a
-                    # crashed or replayed build under the same BUILD_NUMBER.
-                    docker compose $COMPOSE_FILES down -v --remove-orphans || true
-
-                    docker compose $COMPOSE_FILES build traffic-collector traffic-dashboard
-                    docker compose $COMPOSE_FILES up -d traffic-collector traffic-dashboard
-                    sleep 10
-                    CID=$(docker compose $COMPOSE_FILES ps -q traffic-dashboard)
-                    docker exec "$CID" wget -q -O- http://localhost:3002/ > /dev/null
-                    docker exec "$CID" wget -q -O- http://localhost:3002/api/traffic > /dev/null
-                    echo "Integration checks passed"
-                '''
+                // scripts/ci-test.sh is the single source of truth for the
+                // integration checks — the GitHub Actions workflow calls the
+                // same script so both pipelines run identical checks.
+                sh 'bash scripts/ci-test.sh'
             }
             post {
                 always {
+                    // Safety net: ci-test.sh already tears the stack down on
+                    // exit via its own trap, but this covers the case where
+                    // the script itself gets killed (e.g. build aborted).
                     sh 'docker compose $COMPOSE_FILES down -v --remove-orphans || true'
                 }
             }

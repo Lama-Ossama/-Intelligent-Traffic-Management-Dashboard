@@ -239,19 +239,9 @@ locals {
   key_name = var.key_pair_name != "" ? var.key_pair_name : null
 
   # Installs Docker + the Compose plugin on Amazon Linux 2023.
-  docker_bootstrap = <<-EOF
-    #!/bin/bash
-    set -e
-    dnf update -y
-    dnf install -y docker
-    systemctl enable --now docker
-    usermod -aG docker ec2-user
-    DOCKER_CONFIG_DIR=/usr/local/lib/docker/cli-plugins
-    mkdir -p $DOCKER_CONFIG_DIR
-    curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-      -o $DOCKER_CONFIG_DIR/docker-compose
-    chmod +x $DOCKER_CONFIG_DIR/docker-compose
-  EOF
+  # Script lives at scripts/ec2-bootstrap.sh so it can be run/tested
+  # standalone instead of only as an opaque inline heredoc.
+  docker_bootstrap = file("${path.module}/../scripts/ec2-bootstrap.sh")
 }
 
 resource "aws_instance" "jenkins" {
