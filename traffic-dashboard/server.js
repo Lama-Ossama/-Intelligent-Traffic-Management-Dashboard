@@ -65,11 +65,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── Helper: read and parse the CSV file ───────────────────
 function readTrafficCSV(callback) {
   const results = [];
-  const filePath = path.join(__dirname, 'data', 'Traffic.csv');
+  // TRAFFIC_CSV_PATH lets docker-compose point both the dashboard and the
+  // collector at the same file (see docker-compose.yml) instead of each
+  // reading its own baked-in copy. Defaults to the image's bundled copy so
+  // standalone `docker run` / Kubernetes still work with no env var set.
+  const filePath = process.env.TRAFFIC_CSV_PATH || path.join(__dirname, 'data', 'Traffic.csv');
 
   // Check that the file exists before trying to parse it
   if (!fs.existsSync(filePath)) {
-    return callback(new Error('CSV file not found at data/Traffic.csv'), null);
+    return callback(new Error(`CSV file not found at ${filePath}`), null);
   }
 
   fs.createReadStream(filePath)

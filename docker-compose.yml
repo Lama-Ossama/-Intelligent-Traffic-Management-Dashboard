@@ -6,6 +6,12 @@ services:
       dockerfile: dockerfile
     environment:
       - PYTHONUNBUFFERED=1
+      # Points at the same file the dashboard reads (bind-mounted below) so
+      # both containers read one canonical CSV instead of two copies that
+      # could silently drift apart.
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
+    volumes:
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     networks:
       - traffic-network
     restart: unless-stopped
@@ -20,6 +26,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
+    volumes:
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     networks:
       - traffic-network
     depends_on:

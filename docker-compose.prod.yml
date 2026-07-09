@@ -9,6 +9,11 @@ services:
       - traffic-network
     environment:
       - PYTHONUNBUFFERED=1
+      # Same canonical file the dashboard reads (bind-mounted below) — keeps
+      # both containers reading identical data instead of two baked-in copies.
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
+    volumes:
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     depends_on:
       - traffic-dashboard
     restart: on-failure
@@ -29,6 +34,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
+    volumes:
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     restart: on-failure
     logging:
       driver: "json-file"
