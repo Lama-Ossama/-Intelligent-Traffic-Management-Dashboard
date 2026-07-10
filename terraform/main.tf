@@ -86,7 +86,7 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-sg"
-  description = "Allow SSH, Jenkins, and Traffic Dashboard traffic"
+  description = "Allow SSH, Jenkins, Traffic Dashboard, and Grafana traffic"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -114,6 +114,14 @@ resource "aws_security_group" "app" {
     description = "Traffic Dashboard app"
     from_port   = 3002
     to_port     = 3002
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Grafana"
+    from_port   = 3000
+    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

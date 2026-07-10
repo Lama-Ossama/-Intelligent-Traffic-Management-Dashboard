@@ -17,6 +17,12 @@ cd "$PROJECT_ROOT"
 
 export COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.yml -f docker-compose.ci.yml}"
 
+# docker-compose.yml interpolates every service's env vars up front, even
+# when only building/starting a subset -- so GRAFANA_ADMIN_PASSWORD's
+# required-value check trips even though CI never touches the grafana
+# service. It's not used for anything here, so a throwaway default is fine.
+export GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-ci-placeholder}"
+
 cleanup() {
   echo "Tearing down CI stack..."
   docker compose $COMPOSE_FILES down -v --remove-orphans || true

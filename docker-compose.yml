@@ -53,6 +53,28 @@ services:
       - traffic-dashboard
     restart: unless-stopped
 
+  # Grafana Dashboards
+  # Visualizes the metrics Prometheus scrapes from the dashboard service.
+  # Datasource + dashboard are auto-provisioned from ./monitoring/grafana
+  # on startup -- see that folder for the actual config.
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: traffic-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in your .env file, see .env.example}
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - traffic-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
   # ── Jenkins (self-hosted CI/CD, alongside GitHub Actions) ──
   # Custom image bundles Docker CLI + Node.js + Python so the
   # Jenkinsfile stages can install deps, test, and build/push
@@ -81,3 +103,4 @@ networks:
 
 volumes:
   jenkins_home:
+  grafana-storage:
