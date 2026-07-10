@@ -32,6 +32,9 @@ The solution focuses on DevOps practices including containerization, Linux-based
 - Git / GitHub
 - Linux commands and Bash-friendly workflows
 
+## AWS Deployment (Terraform)
+The `terraform/` module provisions an alternative, non-Kubernetes deployment on EC2. Its defaults are tuned to stay inside the AWS Free Tier (Jenkins EC2 instance off by default, Free-Tier-only instance types enforced, EBS/S3 sized and cleaned up to avoid unexpected charges). See [`terraform/README.md`](terraform/README.md) before running `terraform apply`, and always run `terraform destroy` when you're done testing.
+
 ## Prometheus Monitoring
 Prometheus was added as the monitoring part of this DevOps project. The dashboard service exposes a `/metrics` endpoint, and Prometheus scrapes it through the internal Docker Compose network.
 
