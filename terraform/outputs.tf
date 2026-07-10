@@ -19,18 +19,18 @@ output "security_group_id" {
 }
 
 output "jenkins_instance_id" {
-  description = "Instance ID of the Jenkins EC2 instance."
-  value       = aws_instance.jenkins.id
+  description = "Instance ID of the Jenkins EC2 instance, or null if create_jenkins = false."
+  value       = var.create_jenkins ? aws_instance.jenkins[0].id : null
 }
 
 output "jenkins_public_ip" {
-  description = "Public IP address of the Jenkins EC2 instance."
-  value       = aws_instance.jenkins.public_ip
+  description = "Public IP address of the Jenkins EC2 instance, or null if create_jenkins = false."
+  value       = var.create_jenkins ? aws_instance.jenkins[0].public_ip : null
 }
 
 output "jenkins_url" {
-  description = "URL to reach the Jenkins web UI."
-  value       = "http://${aws_instance.jenkins.public_ip}:8080"
+  description = "URL to reach the Jenkins web UI, or null if create_jenkins = false."
+  value       = var.create_jenkins ? "http://${aws_instance.jenkins[0].public_ip}:8080" : null
 }
 
 output "dashboard_instance_id" {

@@ -45,9 +45,14 @@ resource "aws_internet_gateway" "main" {
 resource "aws_subnet" "public" {
   count = length(var.public_subnet_cidrs)
 
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = var.availability_zones[count.index]
+  # Note: since Feb 2024 AWS bills ~$0.005/hr per public IPv4 address
+  # while it's attached to a running instance -- not covered by Free
+  # Tier. Needed here so the dashboard is reachable over HTTP without
+  # a NAT Gateway or Load Balancer (both far more expensive). The
+  # charge stops as soon as the instance is stopped/destroyed.
   map_public_ip_on_launch = true
 
   tags = {
@@ -92,12 +97,17 @@ resource "aws_security_group" "app" {
     cidr_blocks = [var.allowed_ssh_cidr]
   }
 
-  ingress {
-    description = "Jenkins web UI"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  # Only opened when the Jenkins instance actually exists -- no point
+  # exposing a port nothing is listening on.
+  dynamic "ingress" {
+    for_each = var.create_jenkins ? [1] : []
+    content {
+      description = "Jenkins web UI"
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
 
   ingress {
@@ -193,6 +203,10 @@ resource "aws_s3_bucket" "traffic_data" {
 
   bucket = var.s3_bucket_name != "" ? var.s3_bucket_name : "${var.project_name}-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
+  # Lets `terraform destroy` remove the bucket even if backup-data.sh
+  # has left objects/versions in it -- see s3_force_destroy.
+  force_destroy = var.s3_force_destroy
+
   tags = {
     Name = "${var.project_name}-data"
   }
@@ -206,6 +220,35 @@ resource "aws_s3_bucket_versioning" "traffic_data" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+# Bounds storage growth from scripts/backup-data.sh, which writes a
+# new timestamped object on every run and never overwrites/deletes
+# old ones -- without this, storage (and any post-Free-Tier cost)
+# grows forever.
+resource "aws_s3_bucket_lifecycle_configuration" "traffic_data" {
+  count = var.create_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.traffic_data[0].id
+
+  rule {
+    id     = "expire-old-backups"
+    status = "Enabled"
+
+    filter {
+      prefix = "backups/"
+    }
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.traffic_data]
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "traffic_data" {
@@ -245,6 +288,8 @@ locals {
 }
 
 resource "aws_instance" "jenkins" {
+  count = var.create_jenkins ? 1 : 0
+
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.jenkins_instance_type
   subnet_id              = aws_subnet.public[0].id
