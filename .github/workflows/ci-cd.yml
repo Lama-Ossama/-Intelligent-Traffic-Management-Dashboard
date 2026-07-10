@@ -99,6 +99,12 @@ jobs:
               cd "$APP_DIR"
             fi
 
+            # docker-compose.yml interpolates every service's env vars up
+            # front, even when only starting a subset -- grafana isn't
+            # deployed here, so a placeholder satisfies the required-value
+            # check without needing a real secret on this host.
+            export GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-unused-on-ec2}"
+
             docker compose up --build -d traffic-collector traffic-dashboard prometheus
             bash scripts/health-check.sh
 
