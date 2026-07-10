@@ -99,14 +99,17 @@ jobs:
               cd "$APP_DIR"
             fi
 
-            # docker-compose.yml interpolates every service's env vars up
-            # front, even when only starting a subset -- grafana isn't
-            # deployed here, so a placeholder satisfies the required-value
-            # check without needing a real secret on this host.
-            export GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-unused-on-ec2}"
+            # .env isn't tracked by git (see .gitignore), so `git reset
+            # --hard` above never touches it -- safe to rewrite every
+            # deploy to keep the admin password in sync with the secret.
+            cat > .env <<ENV_EOF
+            GRAFANA_ADMIN_USER=admin
+            GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            ENV_EOF
 
-            docker compose up --build -d traffic-collector traffic-dashboard prometheus
+            docker compose up --build -d traffic-collector traffic-dashboard prometheus grafana
             bash scripts/health-check.sh
+            curl -fsS http://localhost:3000/api/health > /dev/null && echo "OK  grafana health check"
 
   # ── Job 4: Code Quality Check ────────────────────────────
   code-quality:
