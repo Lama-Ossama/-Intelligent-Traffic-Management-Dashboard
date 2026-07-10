@@ -1,0 +1,23 @@
+# Prometheus alert rules for the traffic dashboard monitoring demo.
+# These rules use the existing scrape job and metrics exposed by /metrics.
+
+groups:
+  - name: traffic-dashboard-alerts
+    rules:
+      - alert: TrafficDashboardScrapeDown
+        expr: up{job="traffic-dashboard"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Traffic dashboard scrape target is down"
+          description: "Prometheus has not been able to scrape the traffic dashboard for one minute."
+
+      - alert: TrafficDashboardNoTrafficRecords
+        expr: traffic_dashboard_records_total{job="traffic-dashboard"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traffic dashboard has zero loaded records"
+          description: "The dashboard reports zero loaded traffic records for two minutes."
