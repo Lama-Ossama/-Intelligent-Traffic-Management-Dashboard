@@ -1,6 +1,6 @@
 {
   "name": "traffic-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Intelligent Traffic Management Dashboard - Presentation Layer",
   "main": "server.js",
   "scripts": {

@@ -12,6 +12,7 @@ const client  = require('prom-client');
 
 const app  = express();
 const PORT = 3002;
+const VERSION = require('./package.json').version;
 
 // Prometheus metrics registry.
 // These metrics make the dashboard observable during the DevOps demo.
@@ -169,13 +170,14 @@ app.get('/', (req, res) => {
     // Compute stats on all data (not just current page)
     const stats = computeStats(data);
 
-    res.render('index', { 
-      stats, 
+    res.render('index', {
+      stats,
       recentRecords: pageRecords,
       currentPage: page,
       totalPages: totalPages,
       pageSize: pageSize,
-      totalRecords: reversedData.length
+      totalRecords: reversedData.length,
+      version: VERSION
     });
   });
 });
