@@ -1,0 +1,25 @@
+# ============================================================
+#  docker-compose.ci.yml — CI-only overrides
+#  Layered on top of docker-compose.yml for the Jenkinsfile's
+#  "Run Tests" stage (and reusable by GitHub Actions the same
+#  way). Never used for local development.
+#
+#  - Drops the host port publish: the pipeline checks the app
+#    via `docker exec <container> wget localhost:3002`, so no
+#    host port is needed, and publishing one would collide with
+#    a locally running dev stack on the same machine.
+#  - Disables auto-restart so a failed CI container doesn't loop.
+#
+#  `ports` is normally concatenated (not replaced) when merging
+#  Compose files, so a plain `ports: []` here would NOT remove
+#  the base file's "3002:3002" mapping — the `!reset` tag is
+#  required to actually clear it.
+# ============================================================
+
+services:
+  traffic-dashboard:
+    ports: !reset []
+    restart: "no"
+
+  traffic-collector:
+    restart: "no"

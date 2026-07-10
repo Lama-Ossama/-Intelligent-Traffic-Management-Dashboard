@@ -55,43 +55,23 @@ kubectl delete namespace traffic-system
 
 ```yaml
 apiVersion: v1
-kind: Secret
-metadata:
-  name: docker-hub-secret
-  namespace: traffic-system
-type: kubernetes.io/dockercfg
-stringData:
-  .dockercfg: |
-    {
-      "auths": {
-        "docker.io": {
-          "auth": "USERNAME_AND_TOKEN_BASE64_ENCODED"
-        }
-      }
-    }
-
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: traffic-config
   namespace: traffic-system
 data:
   NODE_ENV: "production"
-  COLLECTOR_HOST: "traffic-collector"
-  COLLECTOR_PORT: "3001"
   DASHBOARD_HOST: "traffic-dashboard"
   DASHBOARD_PORT: "3002"
 ```
 
-**جزء 1: Secret (البيانات الحساسة)**
-- **docker-hub-secret**: تخزين بيانات Docker Hub (اسم المستخدم والـ token)
-- **الهدف**: حتى لو في حد شاف الـ manifest، ما يشوف الـ password
-- **الاستخدام**: الـ pods بتستخدمه لـ سحب الـ images من Docker Hub
+**جزء 1: docker-hub-secret (مش هنا)**
+- الـ Secret اتشال من الملف ده لأنه كان فيه credential base64 مكتوب صريح جوه git — أي حد يفتح الـ repo كان يقدر يفك التشفير ويشوف الـ token.
+- بدل كده بتتعمل بالسكريبت `scripts/k8s-create-secret.sh` (مرة واحدة لكل cluster، مش متخزنة في git خالص).
+- **الاستخدام**: الـ Deployments (`03-traffic-collector.yaml`, `04-traffic-dashboard.yaml`) بتحطها في `imagePullSecrets` عشان تسحب الـ images من Docker Hub.
 
 **جزء 2: ConfigMap (الإعدادات العامة)**
 - `NODE_ENV`: "production" - نوع البيئة
-- `COLLECTOR_HOST`: "traffic-collector" - اسم الـ service بتاع الـ Collector
 - `DASHBOARD_HOST`: "traffic-dashboard" - اسم الـ service بتاع الـ Dashboard
 - `PORTS`: الـ ports اللي يستخدموها
 
@@ -182,26 +162,9 @@ readinessProbe:
 - كل 5 ثواني: تفحص
 - لو فشل مرتين: شيلها من الـ load balancer
 
-#### **Service Section**
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: traffic-collector
-  namespace: traffic-system
-spec:
-  type: ClusterIP
-  ports:
-  - port: 3001
-    targetPort: 3001
-```
+#### **مفيش Service للـ Collector**
 
-- `kind: Service` = طريقة الـ وصول للـ pod
-- `type: ClusterIP` = داخلي فقط (ما في وصول من برا الـ cluster)
-- `port: 3001` = الـ port الخارجي
-- `targetPort: 3001` = الـ port الداخلي للـ container
-
-**الفائدة**: الـ Dashboard يقدر يقول "traffic-collector:3001" بدل الـ IP
+`traffic-collector/app.py` هو سكريبت بيطبع بيانات على الـ stdout (زي log) وبس — مش بيفتح أي port. الملف كان فيه `Service` بتحاول توجه traffic لـ port 3001، بس مفيش حاجة شغالة على الـ port ده جوه الـ container، يعني الـ Service كانت بتشاور على IP بدون endpoints حقيقية. اتشالت عشان الملف يعكس الواقع صح.
 
 ---
 
@@ -342,25 +305,34 @@ kustomization.yaml
 │  └─ ينشئ: traffic-system namespace
 │
 ├─ 02-secrets-configmap.yaml
-│  ├─ ينشئ: docker-hub-secret (للـ image pull)
 │  └─ ينشئ: traffic-config (للـ environment variables)
+│     (docker-hub-secret بقت بتتعمل بره git بـ scripts/k8s-create-secret.sh)
 │
 ├─ 03-traffic-collector.yaml
-│  ├─ Deployment:
-│  │  ├─ Image: mohamedosama2004/traffic-collector:latest
-│  │  ├─ Replicas: 1
-│  │  ├─ Health Checks: Liveness + Readiness
-│  │  └─ Auto-Restart: YES
-│  └─ Service: ClusterIP (internal only)
+│  └─ Deployment:
+│     ├─ Image: mohamedosama2004/traffic-collector:latest
+│     ├─ Replicas: 1
+│     ├─ Health Checks: Liveness + Readiness
+│     └─ Auto-Restart: YES
+│     (مفيش Service — الـ collector مش بيفتح port)
 │
-└─ 04-traffic-dashboard.yaml
-   ├─ Deployment:
-   │  ├─ Image: mohamedosama2004/traffic-dashboard:latest
-   │  ├─ Replicas: 2
-   │  ├─ Health Checks: Liveness + Readiness + Startup
-   │  └─ Auto-Restart: YES
-   ├─ Service: LoadBalancer (external access)
-   └─ HPA: Auto-scale 2-5 pods
+├─ 04-traffic-dashboard.yaml
+│  ├─ Deployment:
+│  │  ├─ Image: mohamedosama2004/traffic-dashboard:latest
+│  │  ├─ Replicas: 2
+│  │  ├─ Health Checks: Liveness + Readiness + Startup
+│  │  └─ Auto-Restart: YES
+│  ├─ Service: LoadBalancer (external access)
+│  └─ HPA: Auto-scale 2-5 pods
+│
+├─ 05-nginx-configmap.yaml
+│  └─ ينشئ: nginx-config (reverse proxy conf)
+│
+├─ 06-nginx-deployment.yaml
+│  └─ Deployment: nginx:latest يقرأ nginx-config
+│
+└─ 07-nginx-service.yaml
+   └─ Service: NodePort 30080 -> nginx -> traffic-dashboard:3002
 ```
 
 ---
@@ -370,9 +342,10 @@ kustomization.yaml
 | الملف | النوع | الوظيفة |
 |------|-------|--------|
 | 01 | Namespace | عزل التطبيق |
-| 02 | Secret + ConfigMap | إعدادات وكريدنشيالز |
-| 03 | Deployment + Service | شغل الـ Collector |
+| 02 | ConfigMap | إعدادات (الـ secret بقى منفصل عن git) |
+| 03 | Deployment | شغل الـ Collector |
 | 04 | Deployment + Service + HPA | شغل الـ Dashboard مع auto-scaling |
+| 05-07 | ConfigMap + Deployment + Service | Nginx reverse proxy |
 | Kustomization | Manifest Tool | تسهيل الـ deployment |
 
 ---

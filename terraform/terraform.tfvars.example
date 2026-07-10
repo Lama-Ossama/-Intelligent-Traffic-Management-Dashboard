@@ -1,0 +1,31 @@
+# Copy this file to terraform.tfvars and fill in values for your environment.
+# terraform.tfvars is git-ignored, so real values never get committed.
+
+aws_region   = "us-east-1"
+project_name = "intelligent-traffic-management"
+environment  = "dev"
+
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+availability_zones   = ["us-east-1a", "us-east-1b"]
+
+# Restrict this to your own IP in production, e.g. "203.0.113.10/32"
+allowed_ssh_cidr = "0.0.0.0/0"
+
+# Free-Tier defaults: Jenkins is off, both instance types are
+# Free-Tier-eligible. See terraform/README.md before changing these.
+create_jenkins          = false
+jenkins_instance_type   = "t3.micro"
+dashboard_instance_type = "t3.micro"
+
+# Name of an existing EC2 key pair for SSH access. Leave empty to rely on SSM Session Manager only.
+key_pair_name = ""
+
+# Free Tier covers 30 GB of EBS storage TOTAL across the account.
+root_volume_size_gb = 10
+
+create_s3_bucket = true
+# Leave empty to auto-generate a globally-unique name.
+s3_bucket_name = ""
+# Lets `terraform destroy` remove the bucket even with objects in it.
+s3_force_destroy = true

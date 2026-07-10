@@ -24,7 +24,11 @@ spec:
     spec:
       # Restart policy: always restart if pod crashes
       restartPolicy: Always
-      
+
+      # Created out-of-band via scripts/k8s-create-secret.sh (not in git)
+      imagePullSecrets:
+      - name: docker-hub-secret
+
       containers:
       - name: traffic-dashboard
         image: mohamedosama2004/traffic-dashboard:latest

@@ -1,0 +1,13 @@
+# Secrets / local env
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -8,6 +8,9 @@ resources:
   - 02-secrets-configmap.yaml
   - 03-traffic-collector.yaml
   - 04-traffic-dashboard.yaml
+  - 05-nginx-configmap.yaml
+  - 06-nginx-deployment.yaml
+  - 07-nginx-service.yaml
 
 # Common labels
 commonLabels:

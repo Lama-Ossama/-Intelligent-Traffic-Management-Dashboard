@@ -4,11 +4,14 @@ services:
     build:
       context: ./traffic-collector
       dockerfile: dockerfile
-    container_name: traffic-collector
     environment:
       - PYTHONUNBUFFERED=1
+      # Points at the same file the dashboard reads (bind-mounted below) so
+      # both containers read one canonical CSV instead of two copies that
+      # could silently drift apart.
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
     volumes:
-      - ./traffic-collector/Traffic.csv:/app/Traffic.csv
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     networks:
       - traffic-network
     restart: unless-stopped
@@ -18,14 +21,14 @@ services:
     build:
       context: ./traffic-dashboard
       dockerfile: Dockerfile
-    container_name: traffic-dashboard
     ports:
       - "3002:3002"
     environment:
       - NODE_ENV=production
       - PORT=3002
+      - TRAFFIC_CSV_PATH=/data/Traffic.csv
     volumes:
-      - ./traffic-dashboard/data:/app/data
+      - ./data/Traffic.csv:/data/Traffic.csv:ro
     networks:
       - traffic-network
     depends_on:
@@ -41,6 +44,7 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
@@ -48,27 +52,55 @@ services:
     depends_on:
       - traffic-dashboard
     restart: unless-stopped
-#grafana
+
+  # Grafana Dashboards
+  # Visualizes the metrics Prometheus scrapes from the dashboard service.
+  # Datasource + dashboard are auto-provisioned from ./monitoring/grafana
+  # on startup -- see that folder for the actual config.
   grafana:
     image: grafana/grafana-oss:latest
     container_name: traffic-grafana
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in your .env file, see .env.example}
     volumes:
       - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - traffic-network
     depends_on:
       - prometheus
-    restart: unless-stopped    
+    restart: unless-stopped
+
+  # ── Jenkins (self-hosted CI/CD, alongside GitHub Actions) ──
+  # Custom image bundles Docker CLI + Node.js + Python so the
+  # Jenkinsfile stages can install deps, test, and build/push
+  # images. The Docker socket is mounted so Jenkins controls the
+  # HOST's Docker daemon (Docker-outside-of-Docker) instead of
+  # running a nested daemon.
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: traffic-jenkins
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traffic-network
+    restart: unless-stopped
 
 networks:
   traffic-network:
     driver: bridge
 
 volumes:
+  jenkins_home:
   grafana-storage:
-    

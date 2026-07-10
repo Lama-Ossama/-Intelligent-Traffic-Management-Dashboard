@@ -24,12 +24,16 @@ spec:
     spec:
       # Restart policy: always restart if pod crashes
       restartPolicy: Always
-      
+
+      # Created out-of-band via scripts/k8s-create-secret.sh (not in git)
+      imagePullSecrets:
+      - name: docker-hub-secret
+
       containers:
       - name: traffic-collector
         image: mohamedosama2004/traffic-collector:latest
         imagePullPolicy: Always
-        
+
         # Environment variables
         env:
         - name: NODE_ENV
@@ -100,20 +104,6 @@ spec:
                   - traffic-collector
               topologyKey: kubernetes.io/hostname
 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: traffic-collector
-  namespace: traffic-system
-  labels:
-    app: traffic-collector
-spec:
-  type: ClusterIP
-  ports:
-  - port: 3001
-    targetPort: 3001
-    protocol: TCP
-    name: http
-  selector:
-    app: traffic-collector
+# No Service here: traffic-collector (traffic-collector/app.py) is a
+# stdout-only simulator — it never opens a listening port, so a ClusterIP
+# Service pointing at it would have no live endpoints to route to.

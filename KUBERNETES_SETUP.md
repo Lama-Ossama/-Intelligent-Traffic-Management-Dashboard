@@ -57,28 +57,21 @@ aws eks create-cluster --name traffic-cluster --version 1.27
 aws eks update-kubeconfig --name traffic-cluster
 ```
 
-### الخطوة 3: تعديل Docker Hub Secrets
+### الخطوة 3: إنشاء Docker Hub Secret
 
-قبل الـ deploy، عدّل الـ secret في `02-secrets-configmap.yaml`:
+الـ secret بقى **مش** متخزن في `02-secrets-configmap.yaml` (كان فيه credential مكتوب صريح في الملف، وده خطر لو الـ repo public). بدل كده بتنشئه مرة واحدة لكل cluster بالسكريبت:
 
 ```bash
-# Generate base64 encoded Docker credentials
-echo -n '{"mohamedosama2004": {"auth": "YOUR_BASE64_TOKEN"}}' | base64
-
-# استخدم الناتج في الـ file
+# استخدم Docker Hub access token (مش الباسورد بتاعك)
+# من Account Settings -> Security -> New Access Token
+DOCKERHUB_USERNAME=your-username DOCKERHUB_TOKEN=dckr_pat_xxx ./scripts/k8s-create-secret.sh
 ```
 
 ### الخطوة 4: Deploy على Kubernetes
 
 ```powershell
-# تطبيق جميع الـ manifests
-kubectl apply -f k8s/
-
-# أو تطبيق file بـ file
-kubectl apply -f k8s/01-namespace.yaml
-kubectl apply -f k8s/02-secrets-configmap.yaml
-kubectl apply -f k8s/03-traffic-collector.yaml
-kubectl apply -f k8s/04-traffic-dashboard.yaml
+# طبّق الـ secret الأول (خطوة 3)، بعدين طبّق الـ manifests عن طريق kustomize
+kubectl apply -k k8s/
 ```
 
 ### الخطوة 5: التحقق من الـ deployment

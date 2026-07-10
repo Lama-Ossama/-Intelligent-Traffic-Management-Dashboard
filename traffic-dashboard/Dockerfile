@@ -19,12 +19,9 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 # Stage 3: Copy application source
-# Copy everything else (server.js, views, public, data)
+# Copy everything else (server.js, views, public, data/Traffic.csv) —
+# the image is self-contained, no runtime bind mount needed for the CSV.
 COPY . .
-
-# Ensure data directory exists
-RUN mkdir -p /app/data && \
-    if [ -f /app/traffic-dashboard/data/Traffic.csv ]; then cp /app/traffic-dashboard/data/Traffic.csv /app/data/; fi
 
 # Stage 4: Expose port & run
 # Tell Docker the app listens on port 3002

@@ -14,6 +14,13 @@ jobs:
   # ── Job 1: Test & Build ──────────────────────────────────
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      # Isolated Compose project per run — mirrors the Jenkinsfile's
+      # approach so this job never builds/starts the jenkins service
+      # (also defined in docker-compose.yml) and can't collide with
+      # a Jenkins run or a local dev stack on a shared/self-hosted runner.
+      COMPOSE_PROJECT_NAME: gha-${{ github.run_id }}
+      COMPOSE_FILES: -f docker-compose.yml -f docker-compose.ci.yml
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -21,28 +28,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker images
-        run: |
-          docker compose build
-        working-directory: ${{ github.workspace }}
-
-      - name: Run containers for testing
-        run: |
-          docker compose up -d
-          sleep 10
-        working-directory: ${{ github.workspace }}
-
-      - name: Test Traffic Dashboard API
-        run: |
-          echo "Testing Dashboard health check..."
-          curl -f http://localhost:3002/ || exit 1
-          echo "✓ Dashboard is responding"
-          
-          curl -f http://localhost:3002/api/traffic || exit 1
-          echo "✓ API endpoint is working"
-
-      - name: Stop containers
-        run: docker compose down
+      - name: Run integration tests
+        # scripts/ci-test.sh is the single source of truth for the
+        # integration checks — the Jenkinsfile calls the same script
+        # so both pipelines run identical checks.
+        run: bash scripts/ci-test.sh
         working-directory: ${{ github.workspace }}
 
   # ── Job 2: Build & Push to Docker Hub ────────────────────
@@ -82,7 +72,37 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/traffic-dashboard:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/traffic-dashboard:${{ github.sha }}
 
-  # ── Job 3: Code Quality Check ────────────────────────────
+  # ── Job 3: Deploy to EC2 ──────────────────────────────────
+  deploy-ec2:
+    runs-on: ubuntu-latest
+    needs: build-push-docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deploy to Traffic Dashboard EC2 instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            APP_DIR=~/app
+            REPO_URL=https://github.com/Lama-Ossama/-Intelligent-Traffic-Management-Dashboard.git
+
+            if [ -d "$APP_DIR/.git" ]; then
+              cd "$APP_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone "$REPO_URL" "$APP_DIR"
+              cd "$APP_DIR"
+            fi
+
+            docker compose up --build -d traffic-collector traffic-dashboard prometheus
+            bash scripts/health-check.sh
+
+  # ── Job 4: Code Quality Check ────────────────────────────
   code-quality:
     runs-on: ubuntu-latest
     steps:
