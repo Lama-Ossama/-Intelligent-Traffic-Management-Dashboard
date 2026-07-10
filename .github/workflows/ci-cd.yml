@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-and-build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -109,7 +109,24 @@ jobs:
 
             docker compose up --build -d traffic-collector traffic-dashboard prometheus grafana
             bash scripts/health-check.sh
-            curl -fsS http://localhost:3000/api/health > /dev/null && echo "OK  grafana health check"
+
+            # Grafana installs plugins on first boot and can take ~30-60s to
+            # become ready, so retry its health endpoint instead of checking
+            # once immediately (which raced ahead of startup and failed CI).
+            echo "Waiting for Grafana to become healthy..."
+            for i in $(seq 1 24); do
+              if curl -fsS http://localhost:3000/api/health > /dev/null; then
+                echo "OK  grafana health check"
+                break
+              fi
+              if [ "$i" -eq 24 ]; then
+                echo "ERROR: Grafana did not become healthy in time"
+                docker compose logs grafana --tail 30
+                exit 1
+              fi
+              echo "  grafana not ready yet ($i/24), retrying in 5s..."
+              sleep 5
+            done
 
   # ── Job 4: Code Quality Check ────────────────────────────
   code-quality:
@@ -139,4 +156,3 @@ jobs:
       - name: Check Node.js code
         run: node -c server.js
         working-directory: ./traffic-dashboard
-
